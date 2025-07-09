@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CCTV Monitor Dashboard - ESP32-S3</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <header class="dashboard-header">
+            <div class="container">
+                <div class="logo">
+                    <i class="fas fa-video"></i>
+                    <h1>CCTV Monitor Dashboard</h1>
+                </div>
+                <div class="connection-status" id="connectionStatus">
+                    <i class="fas fa-circle"></i>
+                    <span>Connecting...</span>
+                </div>
+            </div>
+        </header>
+        
+        <div class="dashboard-content">
+            <div class="container">
+                <div class="dashboard-grid">
+                    <!-- Video Section -->
+                    <div class="video-section">
+                        <div class="video-container">
+                            <div class="video-header">
+                                <h2>
+                                    <i class="fas fa-video"></i>
+                                    Live Video Feed
+                                </h2>
+                                <div class="video-controls">
+                                    <button class="btn-icon" onclick="toggleFullscreen(document.querySelector('.video-placeholder'))" title="Fullscreen">
+                                        <i class="fas fa-expand"></i>
+                                    </button>
+                                    <button class="btn-icon" onclick="refreshVideo()" title="Refresh">
+                                        <i class="fas fa-sync-alt"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="video-placeholder" onclick="toggleFullscreen(this)">
+                                <div class="video-overlay">
+                                    <div class="video-icon">
+                                        <i class="fas fa-play-circle"></i>
+                                    </div>
+                                    <h3>Video Stream</h3>
+                                    <p>Connect to your DVR/CCTV system</p>
+                                    <p class="video-info">IP: <span id="dvrIP">192.168.1.100</span> | Port: <span id="dvrPort">554</span></p>
+                                    <small>Click to expand fullscreen</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Video Statistics -->
+                        <div class="video-stats">
+                            <h3>Video Statistics</h3>
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <i class="fas fa-eye"></i>
+                                    <span class="stat-label">Resolution</span>
+                                    <span class="stat-value" id="videoResolution">1920x1080</span>
+                                </div>
+                                <div class="stat-item">
+                                    <i class="fas fa-film"></i>
+                                    <span class="stat-label">FPS</span>
+                                    <span class="stat-value" id="videoFPS">30</span>
+                                </div>
+                                <div class="stat-item">
+                                    <i class="fas fa-compress"></i>
+                                    <span class="stat-label">Codec</span>
+                                    <span class="stat-value" id="videoCodec">H.264</span>
+                                </div>
+                                <div class="stat-item">
+                                    <i class="fas fa-clock"></i>
+                                    <span class="stat-label">Stream Time</span>
+                                    <span class="stat-value" id="streamTime">00:00:00</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Metrics Section -->
+                    <div class="metrics-section">
+                        <div class="metrics-header">
+                            <h2>
+                                <i class="fas fa-chart-line"></i>
+                                Network Quality Metrics
+                            </h2>
+                            <div class="metrics-controls">
+                                <button class="btn-icon" onclick="refreshMetrics()" title="Refresh Metrics">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                                <button class="btn-icon" onclick="exportMetricsData()" title="Export Data">
+                                    <i class="fas fa-download"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Real-time Metrics Cards -->
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <div class="metric-header">
+                                    <h3>Jitter</h3>
+                                    <i class="fas fa-signal"></i>
+                                </div>
+                                <div class="metric-value">
+                                    <span id="jitterValue">0.0</span>
+                                    <span class="unit">ms</span>
+                                </div>
+                                <div class="metric-status" id="jitterStatus">Good</div>
+                                <div class="metric-trend">
+                                    <i class="fas fa-arrow-up"></i>
+                                    <span id="jitterTrend">--</span>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-card">
+                                <div class="metric-header">
+                                    <h3>Delay</h3>
+                                    <i class="fas fa-hourglass-half"></i>
+                                </div>
+                                <div class="metric-value">
+                                    <span id="delayValue">0.0</span>
+                                    <span class="unit">ms</span>
+                                </div>
+                                <div class="metric-status" id="delayStatus">Good</div>
+                                <div class="metric-trend">
+                                    <i class="fas fa-arrow-down"></i>
+                                    <span id="delayTrend">--</span>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-card">
+                                <div class="metric-header">
+                                    <h3>Latency</h3>
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div class="metric-value">
+                                    <span id="latencyValue">0.0</span>
+                                    <span class="unit">ms</span>
+                                </div>
+                                <div class="metric-status" id="latencyStatus">Good</div>
+                                <div class="metric-trend">
+                                    <i class="fas fa-minus"></i>
+                                    <span id="latencyTrend">--</span>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-card">
+                                <div class="metric-header">
+                                    <h3>Bitrate</h3>
+                                    <i class="fas fa-tachometer-alt"></i>
+                                </div>
+                                <div class="metric-value">
+                                    <span id="bitrateValue">0.0</span>
+                                    <span class="unit">Mbps</span>
+                                </div>
+                                <div class="metric-status" id="bitrateStatus">Good</div>
+                                <div class="metric-trend">
+                                    <i class="fas fa-arrow-up"></i>
+                                    <span id="bitrateTrend">--</span>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-card">
+                                <div class="metric-header">
+                                    <h3>Packet Loss</h3>
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <div class="metric-value">
+                                    <span id="packetLossValue">0.0</span>
+                                    <span class="unit">%</span>
+                                </div>
+                                <div class="metric-status" id="packetLossStatus">Good</div>
+                                <div class="metric-trend">
+                                    <i class="fas fa-arrow-down"></i>
+                                    <span id="packetLossTrend">--</span>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-card summary-card">
+                                <div class="metric-header">
+                                    <h3>Overall Quality</h3>
+                                    <i class="fas fa-star"></i>
+                                </div>
+                                <div class="metric-value">
+                                    <span id="qualityScore">95</span>
+                                    <span class="unit">%</span>
+                                </div>
+                                <div class="metric-status" id="qualityStatus">Excellent</div>
+                                <div class="quality-bar">
+                                    <div class="quality-fill" id="qualityFill" style="width: 95%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Real-time Chart -->
+                        <div class="chart-container">
+                            <canvas id="metricsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- System Information -->
+                <div class="system-info-section">
+                    <div class="system-cards">
+                        <div class="system-card">
+                            <div class="system-header">
+                                <h3>ESP32-S3 System</h3>
+                                <i class="fas fa-microchip"></i>
+                            </div>
+                            <div class="system-details">
+                                <div class="detail-item">
+                                    <span class="detail-label">Uptime:</span>
+                                    <span class="detail-value" id="systemUptime">0s</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Free Memory:</span>
+                                    <span class="detail-value" id="systemMemory">--</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">CPU Usage:</span>
+                                    <span class="detail-value" id="systemCPU">--%</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Temperature:</span>
+                                    <span class="detail-value" id="systemTemp">--°C</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="system-card">
+                            <div class="system-header">
+                                <h3>Network Interface</h3>
+                                <i class="fas fa-wifi"></i>
+                            </div>
+                            <div class="system-details">
+                                <div class="detail-item">
+                                    <span class="detail-label">IP Address:</span>
+                                    <span class="detail-value" id="networkIP">---.---.---.---</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">SSID:</span>
+                                    <span class="detail-value" id="networkSSID">---------</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Signal:</span>
+                                    <span class="detail-value" id="networkRSSI">-- dBm</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Gateway:</span>
+                                    <span class="detail-value" id="networkGateway">---.---.---.---</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="system-card">
+                            <div class="system-header">
+                                <h3>Monitoring Status</h3>
+                                <i class="fas fa-eye"></i>
+                            </div>
+                            <div class="system-details">
+                                <div class="detail-item">
+                                    <span class="detail-label">Packets Analyzed:</span>
+                                    <span class="detail-value" id="packetsAnalyzed">0</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Data Processed:</span>
+                                    <span class="detail-value" id="dataProcessed">0 MB</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Last Update:</span>
+                                    <span class="detail-value" id="lastUpdate">--:--:--</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Status:</span>
+                                    <span class="detail-value status-active" id="monitoringStatus">Active</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <footer class="dashboard-footer">
+            <div class="container">
+                <div class="footer-content">
+                    <div class="footer-left">
+                        <p>&copy; 2024 ESP32-S3 CCTV Monitor | Hardware: ESP32-S3 N16R8</p>
+                    </div>
+                    <div class="footer-right">
+                        <a href="index.html" class="footer-link">
+                            <i class="fas fa-home"></i>
+                            Home
+                        </a>
+                        <button onclick="exportMetricsData()" class="footer-link">
+                            <i class="fas fa-download"></i>
+                            Export Data
+                        </button>
+                        <button onclick="location.reload()" class="footer-link">
+                            <i class="fas fa-sync-alt"></i>
+                            Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <script src="script.js"></script>
+    <script>
+        // Dashboard-specific functionality
+        
+        // Start stream time counter
+        let streamStartTime = Date.now();
+        
+        function updateStreamTime() {
+            const elapsed = Date.now() - streamStartTime;
+            const hours = Math.floor(elapsed / 3600000);
+            const minutes = Math.floor((elapsed % 3600000) / 60000);
+            const seconds = Math.floor((elapsed % 60000) / 1000);
+            
+            const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('streamTime').textContent = timeString;
+        }
+        
+        // Update stream time every second
+        setInterval(updateStreamTime, 1000);
+        
+        // Refresh video function
+        function refreshVideo() {
+            const button = event.target.closest('.btn-icon');
+            const icon = button.querySelector('i');
+            
+            // Add spin animation
+            icon.classList.add('fa-spin');
+            
+            // Simulate refresh (replace with actual video refresh logic)
+            setTimeout(() => {
+                icon.classList.remove('fa-spin');
+                console.log('Video refreshed');
+            }, 1000);
+        }
+        
+        // Update quality score based on metrics
+        function updateQualityScore(metrics) {
+            let score = 100;
+            
+            // Deduct points based on thresholds
+            if (metrics.jitter > 20) score -= Math.min(30, metrics.jitter - 20);
+            if (metrics.delay > 100) score -= Math.min(25, (metrics.delay - 100) / 4);
+            if (metrics.latency > 50) score -= Math.min(20, (metrics.latency - 50) / 2);
+            if (metrics.packetLoss > 0.5) score -= Math.min(20, metrics.packetLoss * 10);
+            if (metrics.bitrate < 1.0) score -= Math.min(15, (1.0 - metrics.bitrate) * 15);
+            
+            score = Math.max(0, Math.round(score));
+            
+            // Update display
+            document.getElementById('qualityScore').textContent = score;
+            document.getElementById('qualityFill').style.width = score + '%';
+            
+            // Update status
+            let status = 'Poor';
+            if (score >= 90) status = 'Excellent';
+            else if (score >= 75) status = 'Good';
+            else if (score >= 60) status = 'Fair';
+            
+            document.getElementById('qualityStatus').textContent = status;
+            
+            // Update color
+            const fillElement = document.getElementById('qualityFill');
+            fillElement.className = 'quality-fill';
+            if (score >= 90) fillElement.classList.add('excellent');
+            else if (score >= 75) fillElement.classList.add('good');
+            else if (score >= 60) fillElement.classList.add('fair');
+            else fillElement.classList.add('poor');
+        }
+        
+        // Override the updateMetricsDisplay function to include quality score
+        const originalUpdateMetricsDisplay = updateMetricsDisplay;
+        updateMetricsDisplay = function(data) {
+            originalUpdateMetricsDisplay(data);
+            updateQualityScore(data);
+        };
+        
+        // Initialize dashboard-specific elements
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set initial values
+            document.getElementById('dvrIP').textContent = '192.168.1.100';
+            document.getElementById('dvrPort').textContent = '554';
+            
+            // Add keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey || e.metaKey) {
+                    switch(e.key) {
+                        case 'r':
+                            e.preventDefault();
+                            refreshMetrics();
+                            break;
+                        case 'e':
+                            e.preventDefault();
+                            exportMetricsData();
+                            break;
+                        case 'f':
+                            e.preventDefault();
+                            toggleFullscreen(document.querySelector('.video-placeholder'));
+                            break;
+                    }
+                }
+            });
+        });
+    </script>
+    
+    <style>
+        /* Dashboard-specific styles */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .video-header, .metrics-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .video-header h2, .metrics-header h2 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .video-controls, .metrics-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-icon {
+            width: 2rem;
+            height: 2rem;
+            border: none;
+            border-radius: var(--border-radius);
+            background: var(--background-color);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-icon:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .video-overlay {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+        }
+        
+        .video-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.7;
+        }
+        
+        .video-info {
+            margin-top: 1rem;
+            font-size: 0.875rem;
+            opacity: 0.8;
+        }
+        
+        .video-stats {
+            background: var(--card-background);
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            margin-top: 1rem;
+            border: 1px solid var(--border-color);
+        }
+        
+        .video-stats h3 {
+            font-size: 1rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
+        .stat-item i {
+            color: var(--primary-color);
+            width: 1rem;
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            flex: 1;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-header h3 {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        
+        .metric-header i {
+            color: var(--primary-color);
+        }
+        
+        .metric-trend {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+        
+        .summary-card {
+            grid-column: span 2;
+        }
+        
+        .quality-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--border-color);
+            border-radius: 2px;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+        
+        .quality-fill {
+            height: 100%;
+            background: var(--success-color);
+            transition: var(--transition);
+        }
+        
+        .quality-fill.excellent { background: var(--success-color); }
+        .quality-fill.good { background: #22c55e; }
+        .quality-fill.fair { background: var(--warning-color); }
+        .quality-fill.poor { background: var(--error-color); }
+        
+        .system-info-section {
+            margin-top: 2rem;
+        }
+        
+        .system-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .system-card {
+            background: var(--card-background);
+            border-radius: var(--border-radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+        
+        .system-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .system-header h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+        
+        .system-header i {
+            color: var(--primary-color);
+            font-size: 1.25rem;
+        }
+        
+        .system-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .detail-label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+        
+        .detail-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .status-active {
+            color: var(--success-color);
+        }
+        
+        .dashboard-footer {
+            background: var(--card-background);
+            border-top: 1px solid var(--border-color);
+            padding: 1rem 0;
+            margin-top: 2rem;
+        }
+        
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .footer-left p {
+            margin: 0;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+        
+        .footer-right {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .footer-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            border: none;
+            background: none;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        
+        .footer-link:hover {
+            color: var(--primary-color);
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .summary-card {
+                grid-column: span 1;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .footer-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+</body>
+</html>

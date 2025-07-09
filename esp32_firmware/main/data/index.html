@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP32-S3 CCTV Monitor</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-video"></i>
+                <h1>ESP32-S3 CCTV Monitor</h1>
+            </div>
+            <div class="status-indicator">
+                <div class="status-light" id="statusLight"></div>
+                <span id="statusText">Initializing...</span>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="welcome-section">
+                <h2>Real-time Video Quality Analysis</h2>
+                <p>Monitor your CCTV system's network performance with advanced packet analysis and quality metrics.</p>
+            </div>
+
+            <div class="system-info">
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-wifi"></i>
+                    </div>
+                    <div class="info-content">
+                        <h3>Network Status</h3>
+                        <p id="networkStatus">Connecting...</p>
+                        <small id="ipAddress">IP: ---.---.---.---</small>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="info-content">
+                        <h3>Monitoring</h3>
+                        <p id="monitoringStatus">Initializing...</p>
+                        <small id="packetsAnalyzed">Packets: 0</small>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="info-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <div class="info-content">
+                        <h3>System</h3>
+                        <p id="systemStatus">Online</p>
+                        <small id="uptime">Uptime: 0s</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <a href="dashboard.html" class="btn btn-primary">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Open Dashboard
+                </a>
+                <button onclick="refreshStatus()" class="btn btn-secondary">
+                    <i class="fas fa-sync-alt"></i>
+                    Refresh Status
+                </button>
+                <button onclick="downloadReport()" class="btn btn-outline">
+                    <i class="fas fa-download"></i>
+                    Download Report
+                </button>
+            </div>
+
+            <div class="quick-metrics">
+                <h3>Quick Metrics</h3>
+                <div class="metrics-grid">
+                    <div class="metric-item">
+                        <div class="metric-icon">
+                            <i class="fas fa-signal"></i>
+                        </div>
+                        <div class="metric-info">
+                            <span class="metric-label">Jitter</span>
+                            <span class="metric-value" id="quickJitter">0.0 ms</span>
+                        </div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="metric-info">
+                            <span class="metric-label">Latency</span>
+                            <span class="metric-value" id="quickLatency">0.0 ms</span>
+                        </div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="metric-info">
+                            <span class="metric-label">Packet Loss</span>
+                            <span class="metric-value" id="quickPacketLoss">0.0%</span>
+                        </div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-icon">
+                            <i class="fas fa-tachometer-alt"></i>
+                        </div>
+                        <div class="metric-info">
+                            <span class="metric-label">Bitrate</span>
+                            <span class="metric-value" id="quickBitrate">0.0 Mbps</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="features">
+                <h3>Features</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <i class="fas fa-eye"></i>
+                        <h4>Real-time Monitoring</h4>
+                        <p>Continuous analysis of video stream quality with live updates</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-chart-bar"></i>
+                        <h4>Advanced Analytics</h4>
+                        <p>Detailed metrics including jitter, delay, latency, and packet loss</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-network-wired"></i>
+                        <h4>Network Analysis</h4>
+                        <p>Deep packet inspection using Wireshark integration</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-mobile-alt"></i>
+                        <h4>Responsive Design</h4>
+                        <p>Access from any device with a modern web browser</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>ESP32-S3 CCTV Monitor</h4>
+                    <p>Advanced network monitoring for video surveillance systems</p>
+                </div>
+                <div class="footer-section">
+                    <h4>System Info</h4>
+                    <p>Version: 1.0.0</p>
+                    <p>Build: <span id="buildInfo">Loading...</span></p>
+                </div>
+                <div class="footer-section">
+                    <h4>Support</h4>
+                    <p>Documentation available in README.md</p>
+                    <p>Hardware: ESP32-S3 N16R8</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Global variables
+        let statusUpdateInterval;
+        let metricsUpdateInterval;
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            initializePage();
+            startStatusUpdates();
+            startMetricsUpdates();
+        });
+
+        function initializePage() {
+            updateStatus('Initializing system...');
+            updateBuildInfo();
+        }
+
+        function startStatusUpdates() {
+            // Update status immediately
+            updateSystemStatus();
+            
+            // Set up periodic updates
+            statusUpdateInterval = setInterval(updateSystemStatus, 5000);
+        }
+
+        function startMetricsUpdates() {
+            // Update metrics immediately
+            updateQuickMetrics();
+            
+            // Set up periodic updates
+            metricsUpdateInterval = setInterval(updateQuickMetrics, 2000);
+        }
+
+        function updateSystemStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    // Update network status
+                    const networkStatus = data.wifi ? 'Connected' : 'Disconnected';
+                    document.getElementById('networkStatus').textContent = networkStatus;
+                    document.getElementById('ipAddress').textContent = `IP: ${data.ip}`;
+                    
+                    // Update monitoring status
+                    const monitoringStatus = data.monitoring ? 'Active' : 'Inactive';
+                    document.getElementById('monitoringStatus').textContent = monitoringStatus;
+                    
+                    // Update system status
+                    document.getElementById('uptime').textContent = `Uptime: ${formatUptime(data.uptime)}`;
+                    
+                    // Update status indicator
+                    if (data.wifi && data.monitoring) {
+                        updateStatus('System Online', 'online');
+                    } else if (data.wifi) {
+                        updateStatus('Network Connected', 'warning');
+                    } else {
+                        updateStatus('System Offline', 'offline');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching status:', error);
+                    updateStatus('Connection Error', 'error');
+                });
+        }
+
+        function updateQuickMetrics() {
+            fetch('/api/metrics')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('quickJitter').textContent = `${data.jitter.toFixed(1)} ms`;
+                    document.getElementById('quickLatency').textContent = `${data.latency.toFixed(1)} ms`;
+                    document.getElementById('quickPacketLoss').textContent = `${data.packetLoss.toFixed(1)}%`;
+                    document.getElementById('quickBitrate').textContent = `${data.bitrate.toFixed(1)} Mbps`;
+                    
+                    // Update packets analyzed (estimate)
+                    const packetsAnalyzed = Math.floor(data.timestamp / 10); // Rough estimate
+                    document.getElementById('packetsAnalyzed').textContent = `Packets: ${packetsAnalyzed}`;
+                })
+                .catch(error => {
+                    console.error('Error fetching metrics:', error);
+                });
+        }
+
+        function updateStatus(text, status = 'default') {
+            const statusText = document.getElementById('statusText');
+            const statusLight = document.getElementById('statusLight');
+            
+            statusText.textContent = text;
+            statusLight.className = `status-light ${status}`;
+        }
+
+        function updateBuildInfo() {
+            // Get build info from server or use default
+            fetch('/api/build-info')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('buildInfo').textContent = data.build || 'Development';
+                })
+                .catch(error => {
+                    document.getElementById('buildInfo').textContent = 'Development';
+                });
+        }
+
+        function formatUptime(seconds) {
+            if (seconds < 60) return `${seconds}s`;
+            if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+            
+            const hours = Math.floor(seconds / 3600);s
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+
+        function refreshStatus() {
+            // Visual feedback
+            const button = event.target;
+            const icon = button.querySelector('i');
+            icon.classList.add('fa-spin');
+            
+            // Update status
+            updateSystemStatus();
+            updateQuickMetrics();
+            
+            // Remove spin after 1 second
+            setTimeout(() => {
+                icon.classList.remove('fa-spin');
+            }, 1000);
+        }
+
+        function downloadReport() {
+            // Create and download a basic report
+            const report = generateReport();
+            const blob = new Blob([report], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `cctv_report_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function generateReport() {
+            const timestamp = new Date().toISOString();
+            const networkStatus = document.getElementById('networkStatus').textContent;
+            const ipAddress = document.getElementById('ipAddress').textContent;
+            const monitoringStatus = document.getElementById('monitoringStatus').textContent;
+            const uptime = document.getElementById('uptime').textContent;
+            const jitter = document.getElementById('quickJitter').textContent;
+            const latency = document.getElementById('quickLatency').textContent;
+            const packetLoss = document.getElementById('quickPacketLoss').textContent;
+            const bitrate = document.getElementById('quickBitrate').textContent;
+            
+            return `ESP32-S3 CCTV Monitor Report
+Generated: ${timestamp}
+
+System Status:
+- Network: ${networkStatus}
+- ${ipAddress}
+- Monitoring: ${monitoringStatus}
+- ${uptime}
+
+Current Metrics:
+- Jitter: ${jitter}
+- Latency: ${latency}
+- Packet Loss: ${packetLoss}
+- Bitrate: ${bitrate}
+
+Hardware:
+- Device: ESP32-S3 N16R8
+- Firmware: 1.0.0
+- Interface: Web Dashboard
+
+Notes:
+- This is a basic status report
+- For detailed analysis, use the dashboard
+- Real-time monitoring is active
+`;
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (statusUpdateInterval) clearInterval(statusUpdateInterval);
+            if (metricsUpdateInterval) clearInterval(metricsUpdateInterval);
+        });
+    </script>
+</body>
+</html>
