@@ -108,6 +108,10 @@
 #define BITRATE_WEIGHT 0.15
 #define PACKET_LOSS_WEIGHT 0.15
 
+// Buffer sizes for JSON operations
+#define JSON_BUFFER_SIZE 2048
+#define PACKET_CAPTURE_BUFFER 4096
+
 // Utility Functions
 class SecureConfig {
 public:
@@ -125,12 +129,49 @@ private:
 // Memory Management Functions
 class MemoryManager {
 public:
-    static void* safeMalloc(size_t size);
-    static void* safeRealloc(void* ptr, size_t newSize);
-    static void safeFree(void* ptr);
-    static bool checkHeapHealth();
-    static size_t getFreeHeap();
-    static void printMemoryStats();
+    static void* safeMalloc(size_t size) {
+        if (ESP.getFreeHeap() < size + HEAP_CRITICAL_THRESHOLD) {
+            Serial.printf("Memory allocation failed: requested %d bytes, free heap: %lu\n", 
+                         size, ESP.getFreeHeap());
+            return nullptr;
+        }
+        return malloc(size);
+    }
+    
+    static void* safeRealloc(void* ptr, size_t newSize) {
+        if (ESP.getFreeHeap() < newSize + HEAP_CRITICAL_THRESHOLD) {
+            Serial.printf("Memory reallocation failed: requested %d bytes, free heap: %lu\n", 
+                         newSize, ESP.getFreeHeap());
+            return nullptr;
+        }
+        return realloc(ptr, newSize);
+    }
+    
+    static void safeFree(void* ptr) {
+        if (ptr != nullptr) {
+            free(ptr);
+        }
+    }
+    
+    static bool checkHeapHealth() {
+        uint32_t freeHeap = ESP.getFreeHeap();
+        return freeHeap >= HEAP_CRITICAL_THRESHOLD;
+    }
+    
+    static size_t getFreeHeap() {
+        return ESP.getFreeHeap();
+    }
+    
+    static void printMemoryStats() {
+        uint32_t freeHeap = ESP.getFreeHeap();
+        uint32_t largestBlock = ESP.getMaxAllocHeap();
+        
+        Serial.printf("Memory Stats:\n");
+        Serial.printf("  Free Heap: %lu bytes\n", freeHeap);
+        Serial.printf("  Largest Block: %lu bytes\n", largestBlock);
+        Serial.printf("  Health Status: %s\n", 
+                     checkHeapHealth() ? "GOOD" : "CRITICAL");
+    }
 };
 
 // Circular Buffer Template for preventing memory leaks
@@ -170,8 +211,13 @@ public:
     size_t size() const { return count; }
     bool empty() const { return count == 0; }
     bool full() const { return count >= SIZE; }
+    void clear() { head = tail = count = 0; }
     
     const T& operator[](size_t index) const {
+        return buffer[(tail + index) % SIZE];
+    }
+    
+    T& operator[](size_t index) {
         return buffer[(tail + index) % SIZE];
     }
 };

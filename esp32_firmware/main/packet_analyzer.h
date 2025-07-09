@@ -3,8 +3,8 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
-#include <queue>
 #include <vector>
+#include "config_fixed.h"
 
 class PacketAnalyzer {
 public:
@@ -19,6 +19,7 @@ public:
         uint8_t protocol;
         bool isRTP;
         uint8_t payloadType;
+        uint32_t rtpTimestamp;  // Added missing RTP timestamp field
     };
     
     struct Metrics {
@@ -33,21 +34,22 @@ public:
     };
     
 private:
-    std::queue<PacketInfo> packetQueue;
+    // Data storage vectors (replacing circular buffers for simplicity)
     std::vector<uint32_t> rtpTimestamps;
     std::vector<uint32_t> arrivalTimes;
     std::vector<uint16_t> sequenceNumbers;
     
+    // Current metrics
     Metrics currentMetrics;
+    
+    // Timing and state variables
     uint32_t lastUpdateTime;
     uint32_t totalBytesReceived;
     uint32_t lastBytesReceived;
     uint32_t lastBitrateUpdate;
-    
-    // Analysis parameters
-    static const size_t MAX_PACKET_HISTORY = 100;
-    static const size_t MAX_JITTER_SAMPLES = 50;
-    static const uint32_t METRICS_UPDATE_INTERVAL = 1000; // ms
+    uint8_t lastProcessedPayloadType;
+    bool analysisEnabled;
+    bool newDataAvailable;
     
     // Private methods
     void analyzeRTPPacket(const PacketInfo& packet);
@@ -59,6 +61,7 @@ private:
     void updateMetrics();
     bool isVideoPacket(const PacketInfo& packet);
     uint32_t getCurrentTime();
+    uint32_t getClockRateForPayloadType(uint8_t payloadType);
     
 public:
     PacketAnalyzer();
@@ -74,7 +77,7 @@ public:
     void addPacket(const PacketInfo& packet);
     
     // Metrics access
-    Metrics getMetrics() const { return currentMetrics; }
+    Metrics getMetrics() const;
     bool hasNewData() const;
     void clearNewDataFlag();
     
