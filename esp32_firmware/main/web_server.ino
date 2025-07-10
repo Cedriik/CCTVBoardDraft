@@ -1,9 +1,10 @@
 #include "web_server.h"
-#include "config.h"
+#include "config_fixed.h"  // Use fixed config
 #include <ArduinoJson.h>
 
 // External variables from main.cpp
 extern VideoMetrics currentMetrics;
+extern SemaphoreHandle_t metricsMutex;
 
 CustomWebServer::CustomWebServer() : server(nullptr), webSocket(nullptr) {
 }
@@ -212,7 +213,7 @@ void CustomWebServer::handleMetrics() {
 }
 
 void CustomWebServer::handleAPI() {
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
     
     doc["wifi"] = WiFi.status() == WL_CONNECTED;
     doc["ip"] = WiFi.localIP().toString();
@@ -598,78 +599,45 @@ function updateStatus(metric, value, threshold, higherIsBetter = false) {
 }
 
 function initChart() {
-    const ctx = document.getElementById('metricsChart').getContext('2d');
+    const ctx = document.getElementById('metricsChart');
+    if (!ctx) return;
     
-    metricsChart = new Chart(ctx, {
+    metricsChart = new Chart(ctx.getContext('2d'), {
         type: 'line',
         data: {
             labels: [],
-            datasets: [
-                {
-                    label: 'Jitter (ms)',
-                    data: [],
-                    borderColor: 'rgb(255, 99, 132)',
-                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
-                    tension: 0.1
-                },
-                {
-                    label: 'Delay (ms)',
-                    data: [],
-                    borderColor: 'rgb(54, 162, 235)',
-                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                    tension: 0.1
-                },
-                {
-                    label: 'Latency (ms)',
-                    data: [],
-                    borderColor: 'rgb(255, 205, 86)',
-                    backgroundColor: 'rgba(255, 205, 86, 0.1)',
-                    tension: 0.1
-                },
-                {
-                    label: 'Packet Loss (%)',
-                    data: [],
-                    borderColor: 'rgb(255, 159, 64)',
-                    backgroundColor: 'rgba(255, 159, 64, 0.1)',
-                    tension: 0.1,
-                    yAxisID: 'y1'
-                }
-            ]
+            datasets: [{
+                label: 'Jitter (ms)',
+                data: [],
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                tension: 0.1
+            }, {
+                label: 'Delay (ms)',
+                data: [],
+                borderColor: 'rgb(54, 162, 235)',
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                tension: 0.1
+            }, {
+                label: 'Packet Loss (%)',
+                data: [],
+                borderColor: 'rgb(255, 205, 86)',
+                backgroundColor: 'rgba(255, 205, 86, 0.2)',
+                tension: 0.1
+            }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
                 y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Time (ms)'
-                    }
-                },
-                y1: {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                    title: {
-                        display: true,
-                        text: 'Packet Loss (%)'
-                    },
-                    grid: {
-                        drawOnChartArea: false,
-                    },
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Time'
-                    }
+                    beginAtZero: true
                 }
             },
             plugins: {
                 title: {
                     display: true,
-                    text: 'Network Quality Metrics Over Time'
+                    text: 'Network Quality Metrics'
                 }
             }
         }
@@ -679,18 +647,17 @@ function initChart() {
 function updateChartData(data) {
     if (!metricsChart) return;
     
-    const now = new Date();
-    const timeLabel = now.toLocaleTimeString();
+    const now = new Date().toLocaleTimeString();
+    const maxPoints = 20;
     
     // Add new data point
-    metricsChart.data.labels.push(timeLabel);
+    metricsChart.data.labels.push(now);
     metricsChart.data.datasets[0].data.push(data.jitter);
     metricsChart.data.datasets[1].data.push(data.delay);
-    metricsChart.data.datasets[2].data.push(data.latency);
-    metricsChart.data.datasets[3].data.push(data.packetLoss);
+    metricsChart.data.datasets[2].data.push(data.packetLoss);
     
-    // Keep only the last 20 data points
-    if (metricsChart.data.labels.length > 20) {
+    // Remove old data points to prevent chart from becoming too crowded
+    if (metricsChart.data.labels.length > maxPoints) {
         metricsChart.data.labels.shift();
         metricsChart.data.datasets.forEach(dataset => {
             dataset.data.shift();
@@ -699,26 +666,16 @@ function updateChartData(data) {
     
     metricsChart.update('none');
 }
-
-// Auto-refresh metrics every 5 seconds if WebSocket is not available
-setInterval(function() {
-    if (!socket || socket.readyState !== WebSocket.OPEN) {
-        fetch('/api/metrics')
-            .then(response => response.json())
-            .then(data => updateMetrics(data))
-            .catch(error => console.error('Error fetching metrics:', error));
-    }
-}, 5000);
 )";
     
-    server->send(200, "application/javascript", js);
+    server->send(200, "text/javascript", js);
 }
 
 void CustomWebServer::handleNotFound() {
     String message = "File Not Found\n\n";
     message += "URI: " + server->uri() + "\n";
-    message += "Method: " + (server->method() == HTTP_GET ? "GET" : "POST") + "\n";
-    message += "Arguments: " + server->args() + "\n";
+    message += "Method: " + String((server->method() == HTTP_GET) ? "GET" : "POST") + "\n";
+    message += "Arguments: " + String(server->args()) + "\n";
     
     for (uint8_t i = 0; i < server->args(); i++) {
         message += " " + server->argName(i) + ": " + server->arg(i) + "\n";
@@ -728,25 +685,35 @@ void CustomWebServer::handleNotFound() {
 }
 
 String CustomWebServer::generateMetricsJSON() {
-    DynamicJsonDocument doc(1024);
+    JsonDocument doc;
     
-    doc["jitter"] = currentMetrics.jitter;
-    doc["delay"] = currentMetrics.delay;
-    doc["latency"] = currentMetrics.latency;
-    doc["bitrate"] = currentMetrics.bitrate;
-    doc["packetLoss"] = currentMetrics.packetLoss;
-    doc["timestamp"] = currentMetrics.timestamp;
+    // Thread-safe access to metrics
+    if (xSemaphoreTake(metricsMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+        doc["jitter"] = currentMetrics.jitter;
+        doc["delay"] = currentMetrics.delay;
+        doc["latency"] = currentMetrics.latency;
+        doc["bitrate"] = currentMetrics.bitrate;
+        doc["packetLoss"] = currentMetrics.packetLoss;
+        doc["timestamp"] = currentMetrics.timestamp;
+        xSemaphoreGive(metricsMutex);
+    } else {
+        // Return default values if mutex timeout
+        doc["jitter"] = 0.0;
+        doc["delay"] = 0.0;
+        doc["latency"] = 0.0;
+        doc["bitrate"] = 0.0;
+        doc["packetLoss"] = 0.0;
+        doc["timestamp"] = millis();
+    }
     
     String jsonString;
     serializeJson(doc, jsonString);
-    
     return jsonString;
 }
 
 bool CustomWebServer::handleFileRead(String path) {
-    if (path.endsWith("/")) {
-        path += "index.html";
-    }
+    Serial.println("handleFileRead: " + path);
+    if (path.endsWith("/")) path += "index.html";
     
     String contentType = getContentType(path);
     
@@ -756,7 +723,6 @@ bool CustomWebServer::handleFileRead(String path) {
         file.close();
         return true;
     }
-    
     return false;
 }
 
@@ -771,7 +737,6 @@ String CustomWebServer::getContentType(String filename) {
     else if (filename.endsWith(".xml")) return "text/xml";
     else if (filename.endsWith(".pdf")) return "application/pdf";
     else if (filename.endsWith(".zip")) return "application/zip";
-    else if (filename.endsWith(".gz")) return "application/x-gzip";
     return "text/plain";
 }
 
@@ -798,8 +763,6 @@ int CustomWebServer::getConnectedClients() const {
 
 void CustomWebServer::stop() {
     if (server) {
-        server->stop();
-        server = nullptr;
+        server->close();
     }
-    webSocket = nullptr;
 }
