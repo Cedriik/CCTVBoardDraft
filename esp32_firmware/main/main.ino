@@ -3,10 +3,11 @@
 #include <WebSocketsServer.h>
 #include <ArduinoJson.h>
 #include <SPIFFS.h>
-#include "config_fixed.h"  // Use the fixed config instead of config.h
+#include "config.h"
 #include "network_monitor.h"
 #include "web_server.h"
 #include "packet_analyzer.h"
+#include "WiFiManager.h"
 
 // Global objects
 WebServer server(80);

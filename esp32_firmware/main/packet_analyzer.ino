@@ -1,5 +1,5 @@
 #include "packet_analyzer.h"
-#include "config_fixed.h"
+#include "config.h"
 #include <esp_wifi.h>
 
 // External mutex for thread safety
@@ -361,7 +361,8 @@ void PacketAnalyzer::addPacket(const PacketInfo& packet) {
 
 bool PacketAnalyzer::hasNewData() const {
     if (xSemaphoreTake(metricsMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-        bool hasNew = (getCurrentTime() - currentMetrics.timestamp) < (METRICS_UPDATE_INTERVAL * 2);
+        uint32_t currentTime = millis(); // Use millis() directly since getCurrentTime() is not const
+        bool hasNew = (currentTime - currentMetrics.timestamp) < (METRICS_UPDATE_INTERVAL * 2);
         xSemaphoreGive(metricsMutex);
         return hasNew && newDataAvailable;
     }

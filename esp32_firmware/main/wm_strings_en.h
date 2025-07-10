@@ -93,8 +93,7 @@ const char HTTP_BR[] PROGMEM = "<br/>";
 
 const char HTTP_JS[] PROGMEM = "<script>setTimeout(function(){window.location.reload();},30000);</script>";
 
-// HTTP headers
-const char HTTP_HEAD_CT[] PROGMEM = "text/html";
+// HTTP headers (HTTP_HEAD_CT defined in wm_consts_en.h)
 
 // Info page strings
 const char S_brand[] PROGMEM = "WiFiManager";
@@ -188,6 +187,92 @@ const char S_disconnected[] PROGMEM = "Disconnected";
 // Configuration portal strings
 const char S_configuseap[] PROGMEM = "Configure WiFi (Use Access Point)";
 const char S_confignonap[] PROGMEM = "Configure WiFi (No Access Point Scan)";
+
+// Additional missing constants referenced by WiFiManager
+const char S_ssidpre[] PROGMEM = "ESP";
+const char S_titlewifisettings[] PROGMEM = "WiFi Settings";
+const char S_titlewifisaved[] PROGMEM = "WiFi Saved";
+const char S_titleparamsaved[] PROGMEM = "Parameters Saved";
+const char S_titleinfo[] PROGMEM = "Info";
+const char S_titleexit[] PROGMEM = "Exit";
+const char S_titlereset[] PROGMEM = "Reset";
+const char S_titleerase[] PROGMEM = "Erase";
+const char S_titleclose[] PROGMEM = "Close";
+const char S_exiting[] PROGMEM = "Exiting...";
+const char S_resetting[] PROGMEM = "Resetting...";
+const char S_closing[] PROGMEM = "Closing...";
+const char S_error[] PROGMEM = "ERROR";
+const char S_notfound[] PROGMEM = "File Not Found";
+const char S_uri[] PROGMEM = "URI: ";
+const char S_method[] PROGMEM = "Method: ";
+const char S_args[] PROGMEM = "Arguments: ";
+
+// HTTP Status strings
+const char HTTP_STATUS_ON[] PROGMEM = "<span style='color:green'>ON</span>";
+const char HTTP_STATUS_OFF[] PROGMEM = "<span style='color:red'>OFF</span>";
+const char HTTP_STATUS_OFFPW[] PROGMEM = "<span style='color:red'>OFF (Wrong Password)</span>";
+const char HTTP_STATUS_OFFNOAP[] PROGMEM = "<span style='color:red'>OFF (No AP Found)</span>";
+const char HTTP_STATUS_OFFFAIL[] PROGMEM = "<span style='color:red'>OFF (Connection Failed)</span>";
+const char HTTP_STATUS_NONE[] PROGMEM = "<span style='color:gray'>NONE</span>";
+
+// HTTP form strings
+const char HTTP_PARAMSAVED[] PROGMEM = "<div>Parameters saved successfully</div>";
+
+// Portal menu array (replacing HTTP_PORTAL_MENU)
+const char* const HTTP_PORTAL_MENU[] PROGMEM = {
+    "",  // 0
+    "",  // 1
+    "",  // 2
+    "",  // 3
+    "",  // 4
+    "",  // 5
+    "",  // 6
+    "",  // 7
+    "<form action=\"/\" method=\"get\"><button>Back</button></form>",  // 8
+    "",  // 9
+};
+
+// Additional HTTP info page strings
+const char HTTP_INFO_esphead[] PROGMEM = "<h3>ESP32 Information</h3>";
+const char HTTP_INFO_wifihead[] PROGMEM = "<h3>WiFi Information</h3>";
+const char HTTP_INFO_uptime[] PROGMEM = "<dt>Uptime</dt><dd>{1} sec</dd>";
+const char HTTP_INFO_chipid[] PROGMEM = "<dt>Chip ID</dt><dd>{1}</dd>";
+const char HTTP_INFO_chiprev[] PROGMEM = "<dt>Chip Revision</dt><dd>{1}</dd>";
+const char HTTP_INFO_idesize[] PROGMEM = "<dt>Flash IDE Size</dt><dd>{1} bytes</dd>";
+const char HTTP_INFO_psrsize[] PROGMEM = "<dt>PSRAM Size</dt><dd>{1} bytes</dd>";
+const char HTTP_INFO_cpufreq[] PROGMEM = "<dt>CPU Frequency</dt><dd>{1} MHz</dd>";
+const char HTTP_INFO_freeheap[] PROGMEM = "<dt>Free Heap</dt><dd>{1} bytes</dd>";
+const char HTTP_INFO_memsketch[] PROGMEM = "<dt>Sketch Size</dt><dd>{1} bytes</dd>";
+const char HTTP_INFO_memsmeter[] PROGMEM = "<dt>Free Sketch Space</dt><dd>{1} bytes</dd>";
+const char HTTP_INFO_apip[] PROGMEM = "<dt>AP IP</dt><dd>{1}</dd>";
+const char HTTP_INFO_apmac[] PROGMEM = "<dt>AP MAC</dt><dd>{1}</dd>";
+const char HTTP_INFO_aphost[] PROGMEM = "<dt>AP Hostname</dt><dd>{1}</dd>";
+const char HTTP_INFO_apbssid[] PROGMEM = "<dt>AP BSSID</dt><dd>{1}</dd>";
+const char HTTP_INFO_stassid[] PROGMEM = "<dt>STA SSID</dt><dd>{1}</dd>";
+const char HTTP_INFO_staip[] PROGMEM = "<dt>STA IP</dt><dd>{1}</dd>";
+const char HTTP_INFO_stagw[] PROGMEM = "<dt>STA Gateway</dt><dd>{1}</dd>";
+const char HTTP_INFO_stasub[] PROGMEM = "<dt>STA Subnet</dt><dd>{1}</dd>";
+const char HTTP_INFO_dnss[] PROGMEM = "<dt>DNS Server</dt><dd>{1}</dd>";
+const char HTTP_INFO_host[] PROGMEM = "<dt>Hostname</dt><dd>{1}</dd>";
+const char HTTP_INFO_stamac[] PROGMEM = "<dt>STA MAC</dt><dd>{1}</dd>";
+const char HTTP_INFO_conx[] PROGMEM = "<dt>Connected</dt><dd>{1}</dd>";
+const char HTTP_INFO_temp[] PROGMEM = "<dt>Temperature</dt><dd>{1}°C</dd>";
+const char HTTP_INFO_aboutver[] PROGMEM = "<dt>WiFiManager</dt><dd>{1}</dd>";
+const char HTTP_INFO_aboutarduino[] PROGMEM = "<dt>Arduino</dt><dd>{1}</dd>";
+const char HTTP_INFO_sdkver[] PROGMEM = "<dt>ESP32 SDK</dt><dd>{1}</dd>";
+const char HTTP_INFO_aboutdate[] PROGMEM = "<dt>Build Date</dt><dd>{1}</dd>";
+
+// Additional buttons and forms
+const char HTTP_ERASEBTN[] PROGMEM = "<form action=\"/erase\" method=\"post\"><button class=\"D\">Erase</button></form>";
+const char HTTP_HELP[] PROGMEM = "<div><a href=\"https://github.com/tzapu/WiFiManager\">WiFiManager GitHub</a></div>";
+
+// OTA Update strings
+const char HTTP_UPDATE[] PROGMEM = "<form method='POST' action='/update' enctype='multipart/form-data'><input type='file' name='update'><input type='submit' value='Update'></form>";
+const char HTTP_UPDATE_FAIL[] PROGMEM = "<div>Update Failed!</div>";
+const char HTTP_UPDATE_SUCCESS[] PROGMEM = "<div>Update Successful! Rebooting...</div>";
+
+// Debug strings
+const char D_HR[] PROGMEM = "------------------------------------";
 
 #include "wm_consts_en.h"
 
